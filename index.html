@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Giam sat cam bien & dieu khien dong co - Raspberry Pi</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 480px;
+    margin: 40px auto;
+    padding: 0 16px;
+    color: #222;
+  }
+  h1 { font-size: 1.3rem; }
+  .card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .row { display: flex; justify-content: space-between; margin: 6px 0; }
+  .label { color: #666; }
+  .value { font-weight: bold; }
+  .bright { color: #b8860b; }
+  .dark { color: #444; }
+  input[type=range] { width: 100%; }
+  button {
+    padding: 8px 14px;
+    margin-right: 8px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+  }
+  button:hover { background: #1d4ed8; }
+  #posValue { font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>Giam sat cam bien & dieu khien dong co</h1>
+
+<div class="card">
+  <div class="row">
+    <span class="label">Anh sang</span>
+    <span class="value" id="light">--</span>
+  </div>
+  <div class="row">
+    <span class="label">Nhiet do</span>
+    <span class="value" id="temp">-- &deg;C</span>
+  </div>
+  <div class="row">
+    <span class="label">Vi tri dong co</span>
+    <span class="value" id="position">--</span>
+  </div>
+</div>
+
+<div class="card">
+  <p>Dieu khien dong co buoc (0 - 512):</p>
+  <input type="range" id="slider" min="0" max="512" value="0">
+  <p>Muc tieu: <span id="posValue">0</span></p>
+  <button onclick="sendPosition()">Di chuyen</button>
+  <button onclick="setSliderAndSend(0)">Ve 0</button>
+</div>
+
+<script>
+const light = document.getElementById('light');
+const temp = document.getElementById('temp');
+const position = document.getElementById('position');
+const slider = document.getElementById('slider');
+const posValue = document.getElementById('posValue');
+
+slider.addEventListener('input', () => {
+  posValue.textContent = slider.value;
+});
+
+async function refreshStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+
+    light.textContent = data.bright ? 'Sang' : 'Toi';
+    light.className = 'value ' + (data.bright ? 'bright' : 'dark');
+
+    temp.textContent = (data.temperature !== null && data.temperature !== undefined)
+      ? data.temperature.toFixed(1) + ' \u00b0C'
+      : 'Khong doc duoc';
+
+    position.textContent = data.position;
+  } catch (err) {
+    console.error('Loi khi lay trang thai:', err);
+  }
+}
+
+async function sendPosition() {
+  const target = parseInt(slider.value, 10);
+  try {
+    const res = await fetch('/api/motor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ position: target })
+    });
+    const data = await res.json();
+    if (data.position !== undefined) {
+      position.textContent = data.position;
+    }
+  } catch (err) {
+    console.error('Loi khi dieu khien dong co:', err);
+  }
+}
+
+function setSliderAndSend(value) {
+  slider.value = value;
+  posValue.textContent = value;
+  sendPosition();
+}
+
+refreshStatus();
+setInterval(refreshStatus, 2000);
+</script>
+
+</body>
+</html>

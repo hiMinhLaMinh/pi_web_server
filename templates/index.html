@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Điều Khiển IoT</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: 20px auto; }
+        h1 { color: #333; }
+        .data { font-size: 24px; font-weight: bold; color: #0066cc; margin: 10px 0; }
+        input[type="number"] { width: 100px; padding: 10px; font-size: 16px; margin: 10px; text-align: center; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 15px; font-size: 16px; margin: 5px; cursor: pointer; border: none; border-radius: 5px; color: white; transition: 0.3s; }
+        .btn-thuan { background-color: #28a745; }
+        .btn-nghich { background-color: #17a2b8; }
+        .btn-dung { background-color: #dc3545; display: block; width: 80%; margin: 15px auto 0 auto; font-weight: bold; }
+        button:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🌡️ Thông số Môi trường</h2>
+        <div class="data">Nhiệt độ: <span id="temp">--</span> °C</div>
+        <div class="data">Độ ẩm: <span id="hum">--</span> %</div>
+    </div>
+
+    <div class="card">
+        <h2>⚙️ Điều khiển Động cơ</h2>
+        <input type="number" id="angle" placeholder="Góc (VD: 90)" min="1">
+        <br>
+        <button class="btn-thuan" onclick="sendMotorCommand('thuan')">Thuận ↻</button>
+        <button class="btn-nghich" onclick="sendMotorCommand('nghich')">Nghịch ↺</button>
+        
+        <!-- NÚT DỪNG -->
+        <button class="btn-dung" onclick="stopMotor()">🛑 DỪNG ĐỘNG CƠ</button>
+        
+        <p id="motor-status" style="color: #d84b25; font-size: 15px; margin-top: 15px; font-weight: bold;"></p>
+    </div>
+
+    <script>
+        // Lấy dữ liệu cảm biến
+        function fetchSensorData() {
+            fetch('/api/sensor')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        document.getElementById('temp').innerText = data.temp;
+                        document.getElementById('hum').innerText = data.hum;
+                    }
+                })
+                .catch(error => console.error('Lỗi đọc cảm biến:', error));
+        }
+        setInterval(fetchSensorData, 3000);
+        fetchSensorData();
+
+        // Gửi lệnh quay liên tục
+        function sendMotorCommand(direction) {
+            const angle = document.getElementById('angle').value;
+            const statusText = document.getElementById('motor-status');
+
+            if (!angle || angle <= 0) {
+                alert('Vui lòng nhập góc quay lớn hơn 0!');
+                return;
+            }
+            statusText.innerText = "Đang gửi lệnh...";
+
+            fetch('/api/motor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ angle: angle, direction: direction })
+            })
+            .then(response => response.json())
+            .then(data => {
+                statusText.innerText = data.message;
+                statusText.style.color = "#28a745";
+            })
+            .catch(error => {
+                statusText.innerText = "Lỗi kết nối!";
+            });
+        }
+
+        // Gửi lệnh DỪNG
+        function stopMotor() {
+            const statusText = document.getElementById('motor-status');
+            fetch('/api/motor/stop', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                statusText.innerText = data.message;
+                statusText.style.color = "#dc3545";
+            });
+        }
+    </script>
+</body>
+</html>
